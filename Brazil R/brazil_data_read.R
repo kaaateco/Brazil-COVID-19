@@ -1,0 +1,129 @@
+# Read raw COVID-19 data from JHU
+
+# Github folder:
+# https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series
+
+# load packages
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+
+# confirmed
+case_url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
+confirmed = read_csv(case_url)
+
+# recovered
+# Exercise: repeat this code for recoveries
+recovered_url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
+recovered = read_csv(recovered_url)
+
+# died
+# Exercise: repeat this code for deaths
+death_url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
+deaths = read_csv(death_url)
+
+# Next steps: Inspect the data with
+## View(confirmed)
+
+# Process the data with dplyr (or software of your choice)
+# Data format should be
+#      - each row is a day (with date)
+#      - the columns are daily cases, deaths, recoveries.
+
+confirmed %>% pull(`Country/Region`) %>% unique()
+
+confirmed %>% pull(`Country/Region`) %>% unique()
+
+
+confirmed %>% filter(`Country/Region` == "Brazil") %>%
+  pull(`Province/State`) %>% unique()
+
+brazil_confirmed = confirmed %>%
+  filter(`Country/Region` == "Brazil") %>% #, is.na(`Province/State`)
+  dplyr::select(-`Province/State`, -Lat, -Long, -`Country/Region`)
+
+brazil_confirmed = tibble(date = colnames(brazil_confirmed),
+                           cases_total = as.numeric(brazil_confirmed[1, ]))
+
+brazil_deaths = deaths %>%
+  filter(`Country/Region` == "Brazil") %>% #, is.na(`Province/State`)
+  dplyr::select(-`Province/State`, -Lat, -Long, -`Country/Region`)
+brazil_deaths = tibble(date = colnames(brazil_deaths),
+                        deaths_total = as.numeric(brazil_deaths[1, ]))
+
+brazil_recovered = recovered %>%
+  filter(`Country/Region` == "Brazil") %>% #, is.na(`Province/State`)
+  dplyr::select(-`Province/State`, -Lat, -Long, -`Country/Region`)
+brazil_recovered = tibble(date = colnames(brazil_recovered),
+                           recoveries_total = as.numeric(brazil_recovered[1, ]))
+
+brazil = brazil_confirmed %>% left_join(brazil_recovered, by = "date")
+brazil = brazil %>% left_join(brazil_deaths, by = "date")
+
+# Transform data for plotting
+as.Date("1/24/20", format = "%m/%d/%y")
+brazil =
+  brazil %>%
+  mutate(date = as.Date(date, format = "%m/%d/%y"))
+
+
+# daily case, death, recoveries
+brazil =
+  brazil %>%
+  mutate(total_removed = deaths_total + recoveries_total,
+         total_active_infected = cases_total - total_removed,
+         day_index = 1:n(),
+         daily_removed = total_removed - lag(total_removed),
+         daily_infected = cases_total - lag(cases_total),
+         daily_deaths = deaths_total - lag(deaths_total),
+         daily_recoveries = recoveries_total - lag(recoveries_total),
+         I = daily_infected,
+         R = daily_removed)
+
+brazil =
+  brazil %>% filter(I > -19796)
+
+brazil =
+  brazil %>% filter(R > -17770102)
+
+# Static plots
+ggplot(brazil) +
+  aes(x = date, y = I) +
+  geom_col()
+
+ggplot(brazil) +
+  aes(x = date, y = R) +
+  geom_col()
+
+
+
+# stacked geom col:
+stack = bind_rows(
+  brazil %>% dplyr::select(date, val = daily_infected) %>%
+    mutate(name = "New Cases"),
+  brazil %>% dplyr::select(date, val = daily_deaths) %>%
+    mutate(name = "Fatalities"),
+  brazil %>% dplyr::select(date, val = daily_recoveries) %>%
+    mutate(name = "Recoveries")
+)
+
+ggplot(stack) +
+  aes(x = date, y = val, fill = name) +
+  geom_col()
+
+plot_ly(brazil, x = ~date, y =~I, type = "bar", hoverinfo = "text") %>%
+  layout(barmode = "stack", title = list(xanchor = "left", x = 0), legend =
+           list(orientation = "h", font = list(size = 16))) %>%
+  plotly::config(toImageButtonOptions = list(width = NULL, height = NULL))
+
+
+plot_ly(brazil, x = ~date, y =~R, type = "bar", hoverinfo = "text") %>%
+  layout(barmode = "stack", title = list(xanchor = "left", x = 0), legend =
+           list(orientation = "h", font = list(size = 16))) %>%
+  plotly::config(toImageButtonOptions = list(width = NULL, height = NULL))
+
+plot_ly(stack, x = ~date, y =~val, color = ~name,
+        type = "bar", hoverinfo = "text") %>%
+  layout(barmode = "stack", title = list(xanchor = "left", x = 0), legend =
+           list(orientation = "h", font = list(size = 16))) %>%
+  plotly::config(toImageButtonOptions = list(width = NULL, height = NULL))
