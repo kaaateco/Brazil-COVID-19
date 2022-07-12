@@ -101,7 +101,7 @@ periods <- function(date_initial, date_final){
   }
   # set starting values ----
   starting_param_val = log(c(1e-2,1e-5))
-  N = 1366e6                                 # population size
+  N = 212e6                                 # population size
   lambda = mu = 0                            # birth/death rate
   data = brazil                               # set the data set
   # Optimization result ----
@@ -157,13 +157,13 @@ periods <- function(date_initial, date_final){
   #ggsave("Both_6.png", p, width = 8, height = 6)
   return(pred)
 }
-binder1 <- periods(as.Date("2020-10-01"), as.Date("2020-11-01"))
-binder2 <- periods(as.Date("2020-11-01"), as.Date("2020-12-01"))
-binder3 <- periods(as.Date("2020-12-01"), as.Date("2021-01-01"))
-binder4 <- periods(as.Date("2021-01-01"), as.Date("2021-02-01"))
-binder5 <- periods(as.Date("2021-02-01"), as.Date("2021-03-01"))
-binder6 <- periods(as.Date("2021-03-01"), as.Date("2021-04-01"))
-bind <- rbind(binder1, binder2, binder3, binder4, binder5, binder6)
+binder1 <- periods(as.Date("2020-11-01"), as.Date("2020-12-01"))
+binder2 <- periods(as.Date("2020-12-01"), as.Date("2021-01-01"))
+binder3 <- periods(as.Date("2021-01-01"), as.Date("2021-02-01"))
+binder4 <- periods(as.Date("2021-02-01"), as.Date("2021-03-01"))
+binder5 <- periods(as.Date("2021-03-01"), as.Date("2021-04-01"))
+
+bind <- rbind(binder1, binder2, binder3, binder4, binder5)
 print(str(bind))
 bind
 
@@ -216,7 +216,7 @@ brazil =
 
 
 brazil = brazil %>% 
-  filter(date >= as.Date("2020-10-01"), date <= as.Date("2021-04-01"))
+  filter(date >= as.Date("2020-11-01"), date <= as.Date("2021-04-01"))
 
 
 
@@ -238,8 +238,8 @@ base = ggplot() +
   ) +
   theme(legend.position = "right")
 p1 = base +
-  geom_line(mapping = aes(x = date, y = pred_I, color = colour),
-            data = bind, size = 1,color=mn) +
+  geom_smooth(mapping = aes(x = date, y = pred_I, color = colour),
+            data = bind, size = 1,color=mn, span = 0.2) +
   geom_bar(mapping = aes(x = date, y = I), stat = "identity",
            data = brazil, width = 0.5, fill = 'steelblue', alpha = 0.7,
   ) #+
@@ -247,9 +247,9 @@ p1 = base +
 p1 = p1 + labs(y = "Active Cases")
 #ggsave("Cases_8months.pdf",p1,width=8, height=6)
 p2 = base +
-  geom_line(mapping = aes(x = date, y = pred_R, color = colour),
-            data = bind, size = 1,color = mn) +
-  geom_bar(mapping = aes(x = date, y=R), stat="identity",
+  geom_smooth(mapping = aes(x = date, y = pred_R, color = colour),
+            data = bind, size = 1,color = mn, span = 0.2) +
+  geom_bar(mapping = aes(x = date, y= R), stat="identity",
            data = brazil, width = 0.5, fill = 'steelblue', alpha = 0.7) #+
 #xlim(binder1, binder6)
 p2 = p2 + labs(y = "Removed")
@@ -259,3 +259,6 @@ p = grid.arrange(p1, p2)
 grid.arrange(p1, p2)
 }
 plot_periods(bind)
+
+
+#Need to add beta and gamma parameters
