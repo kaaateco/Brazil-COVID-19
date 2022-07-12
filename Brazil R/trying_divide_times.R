@@ -7,7 +7,7 @@ library(gridExtra)
 library(arm)
 library(tidyverse)
 library(ggplot2)
-periods <- function(date_initial, date_final){
+periods <- function(date_initial, date_final,starting_par){
   # Set date ranges ----
   #date_initial = as.Date("2020-10-01")
   #date_final = as.Date("2021-04-01")
@@ -100,7 +100,7 @@ periods <- function(date_initial, date_final){
     ss(beta = x[1], gamma = x[2], N = N, data = data, lambda = lambda, mu = mu)
   }
   # set starting values ----
-  starting_param_val = log(c(1e-2,1e-5))
+  starting_param_val = starting_par
   N = 212e6                                 # population size
   lambda = mu = 0                            # birth/death rate
   data = brazil                               # set the data set
@@ -108,7 +108,8 @@ periods <- function(date_initial, date_final){
   ss_optim = optim(starting_param_val, ss2, N = N, data = data, lambda = lambda,
                    mu = mu)
   # Calculate R0 ----
-  pars = ss_optim$par                       # extract parameter estimates
+  pars = ss_optim$par 
+  # extract parameter estimates
   R = exp(pars[1]) / exp(pars[2])           # compute R0 for SIR
   # Predictions ----
   predictions = sir_1(beta = exp(pars[1]), gamma = exp(pars[2]), times = data$day, N = N, lambda = lambda,
@@ -155,15 +156,16 @@ periods <- function(date_initial, date_final){
   #ggsave("Removed_8months.pdf",p2,width=8, height=6)
   p = grid.arrange(p1, p2)
   #ggsave("Both_6.png", p, width = 8, height = 6)
-  return(pred)
+  return(list(pred,pars))
 }
-binder1 <- periods(as.Date("2020-11-01"), as.Date("2020-12-01"))
-binder2 <- periods(as.Date("2020-12-01"), as.Date("2021-01-01"))
-binder3 <- periods(as.Date("2021-01-01"), as.Date("2021-02-01"))
-binder4 <- periods(as.Date("2021-02-01"), as.Date("2021-03-01"))
-binder5 <- periods(as.Date("2021-03-01"), as.Date("2021-04-01"))
+starting=log(c(1e-2,1e-5))
+binder1 <- periods(as.Date("2020-11-01"), as.Date("2020-12-01"),starting)
+binder2 <- periods(as.Date("2020-12-01"), as.Date("2021-01-01"),binder1[[2]])
+binder3 <- periods(as.Date("2021-01-01"), as.Date("2021-02-01"),binder2[[2]])
+binder4 <- periods(as.Date("2021-02-01"), as.Date("2021-03-01"),binder3[[2]])
+binder5 <- periods(as.Date("2021-03-01"), as.Date("2021-04-01"),binder4[[2]])
 
-bind <- rbind(binder1, binder2, binder3, binder4, binder5)
+bind <- rbind(binder1[[1]], binder2[[1]], binder3[[1]], binder4[[1]], binder5[[1]])
 print(str(bind))
 bind
 
