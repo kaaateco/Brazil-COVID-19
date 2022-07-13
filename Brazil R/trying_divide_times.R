@@ -1,4 +1,4 @@
-# Title:
+# Title: SIR_divided_times
 # Authors:
 # Packages ----
 library(deSolve)
@@ -56,7 +56,7 @@ periods <- function(date_initial, date_final,starting_par){
     brazil %>%
     filter(date >= date_initial, date <= date_final)
   # SIR solver ----
-  sir_1 = function(beta, gamma, times, N, lambda, mu) {
+  sir_1 = function(beta, gamma, times, N, lambda, mu,I0,R0) {
     # define SIR equations
     sir_equations = function(time, variables, parameters) {
       with(as.list(c(variables, parameters)), {
@@ -68,8 +68,6 @@ periods <- function(date_initial, date_final,starting_par){
     }
     # prepare input for ODE solver
     parameters_values = c(beta = beta, gamma = gamma)
-    I0 = data$I[1]
-    R0 = data$R[1] 
     S0 = N - I0 - R0
     initial_values = c(S = S0, I = I0, R = R0)
     # solve system of ODEs
@@ -90,7 +88,7 @@ periods <- function(date_initial, date_final,starting_par){
     # generate predictions using parameters, starting values
     predictions = sir_1(beta = beta, gamma = gamma,                        # parameters
                                                           # variables' intial values
-                        times = times, N = N, lambda = lambda, mu = mu)    # time points
+                        times = times, N = N, lambda = lambda, mu = mu, I0=I0, R0=R0)    # time points
     # compute the sums of squares
     sum((predictions$I[-1] - data$I[-1])^2 + (predictions$R[-1] - data$R[-1])^2)
     #sum((predictions$I[-1] - data$I[-1])^2 )
@@ -103,7 +101,10 @@ periods <- function(date_initial, date_final,starting_par){
   starting_param_val = starting_par
   N = 212e6                                 # population size
   lambda = mu = 0                            # birth/death rate
-  data = brazil                               # set the data set
+  data = brazil   
+  I0=data$I[1]
+  R0=data$R[1]
+  # set the data set
   # Optimization result ----
   ss_optim = optim(starting_param_val, ss2, N = N, data = data, lambda = lambda,
                    mu = mu)
@@ -113,7 +114,7 @@ periods <- function(date_initial, date_final,starting_par){
   R = exp(pars[1]) / exp(pars[2])           # compute R0 for SIR
   # Predictions ----
   predictions = sir_1(beta = exp(pars[1]), gamma = exp(pars[2]), times = data$day, N = N, lambda = lambda,
-                      mu = mu)              # generate predictions from the least
+                      mu = mu, I0 = I0, R0 = R0)              # generate predictions from the least
   # squares solution
   # Collect predictions into data frame ----
   pred_I = predictions$I
@@ -158,14 +159,15 @@ periods <- function(date_initial, date_final,starting_par){
   #ggsave("Both_6.png", p, width = 8, height = 6)
   return(list(pred,pars))
 }
+
+
 starting=log(c(1e-2,1e-5))
 binder1 <- periods(as.Date("2020-11-01"), as.Date("2020-12-01"),starting)
 binder2 <- periods(as.Date("2020-12-01"), as.Date("2021-01-01"),binder1[[2]])
-binder3 <- periods(as.Date("2021-01-01"), as.Date("2021-02-01"),binder2[[2]])
-binder4 <- periods(as.Date("2021-02-01"), as.Date("2021-03-01"),binder3[[2]])
-binder5 <- periods(as.Date("2021-03-01"), as.Date("2021-04-01"),binder4[[2]])
+binder3 <- periods(as.Date("2021-02-01"), as.Date("2021-03-01"),binder2[[2]])
+binder4 <- periods(as.Date("2021-03-01"), as.Date("2021-04-01"),binder3[[2]])
 
-bind <- rbind(binder1[[1]], binder2[[1]], binder3[[1]], binder4[[1]], binder5[[1]])
+bind <- rbind(binder1[[1]], binder2[[1]], binder3[[1]], binder4[[1]])
 print(str(bind))
 bind
 
