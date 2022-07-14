@@ -12,8 +12,8 @@ library(bbmle)
 library(dplyr)
 
 # Set date ranges ----
-date_initial = as.Date("2020-04-01")
-date_final = as.Date("2020-06-01")
+date_initial = as.Date("2020-11-01")
+date_final = as.Date("2021-04-01")
 
 # Import data ----
 # confirmed
@@ -31,19 +31,19 @@ recoveries = read_csv(recovery_url)
 # Process and merge data ----
 brazil_confirmed = confirmed %>%
   filter(`Country/Region` == "Brazil") %>% #, is.na(`Province/State`)
-  select(-`Province/State`, -Lat, -Long, -`Country/Region`)
+  dplyr::select(-`Province/State`, -Lat, -Long, -`Country/Region`)
 brazil_confirmed = tibble(date = colnames(brazil_confirmed),
                            cases_total = as.numeric(brazil_confirmed[1, ]))
 
 brazil_deaths = deaths %>%
   filter(`Country/Region` == "Brazil") %>% #, is.na(`Province/State`)
-  select(-`Province/State`, -Lat, -Long, -`Country/Region`)
+  dplyr::select(-`Province/State`, -Lat, -Long, -`Country/Region`)
 brazil_deaths = tibble(date = colnames(brazil_deaths),
                         deaths_total = as.numeric(brazil_deaths[1, ]))
 
 brazil_recovered = recoveries %>%
   filter(`Country/Region` == "Brazil") %>% #, is.na(`Province/State`)
-  select(-`Province/State`, -Lat, -Long, -`Country/Region`)
+  dplyr::select(-`Province/State`, -Lat, -Long, -`Country/Region`)
 brazil_recovered = tibble(date = colnames(brazil_recovered),
                            recoveries_total = as.numeric(brazil_recovered[1, ]))
 
@@ -258,6 +258,6 @@ p2 = base +
 p2 = p2 + labs(y = "Removed")
 #ggsave("Removed_8months.pdf",p2,width=8, height=6)
 
-p = grid.arrange(p1, p2)
+p = grid.arrange(p1, p2, ncol=2)
 #ggsave("Both_6.png", p, width = 8, height = 6)
 

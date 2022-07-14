@@ -13,7 +13,7 @@ library(dplyr)
 
 # Set date ranges ----
 date_initial = as.Date("2020-11-01")
-date_final = as.Date("2021-1-01")
+date_final = as.Date("2021-04-01")
 
 
 # Import data ----
