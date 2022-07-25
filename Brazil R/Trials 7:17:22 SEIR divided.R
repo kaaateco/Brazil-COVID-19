@@ -314,10 +314,11 @@ periods_SEIR <- function(date_initial, date_final,starting_par){
 
 
 starting_par=log(c(1e-2,1e-5))
-binder1 <- periods_SEIR(as.Date("2020-11-01"), as.Date("2020-12-01"),starting_par)
-binder2 <- periods_SEIR(as.Date("2020-12-01"), as.Date("2021-01-01"), c(binder1[[3]][1], binder1[[3]][2]))
-binder3 <- periods_SEIR(as.Date("2021-02-01"), as.Date("2021-03-01"),c(binder2[[3]][1], binder2[[3]][2]))
-binder4 <- periods_SEIR(as.Date("2021-03-01"), as.Date("2021-04-01"),c(binder3[[3]][1], binder3[[3]][2]))
+binder1 <- periods_SEIR(as.Date("2020-11-01"), as.Date("2020-11-30"),starting_par)
+binder2 <- periods_SEIR(as.Date("2020-12-01"), as.Date("2020-12-31"), c(binder1[[3]][1], binder1[[3]][2]))
+binder3 <- periods_SEIR(as.Date("2021-01-01"), as.Date("2021-01-31"), c(binder2[[3]][1], binder2[[3]][2]))
+binder4 <- periods_SEIR(as.Date("2021-02-01"), as.Date("2021-02-28"),c(binder3[[3]][1], binder3[[3]][2]))
+binder5 <- periods_SEIR(as.Date("2021-03-01"), as.Date("2021-03-31"),c(binder4[[3]][1], binder4[[3]][2]))
 
 ##Testing Period
 
@@ -385,16 +386,16 @@ return(testing_ci)
 
 
 
-binder_test_period <- testing_seir(date_initial=as.Date("2021-04-01"), date_final=as.Date("2021-05-01"), 
+binder_test_period <- testing_seir(date_initial=as.Date("2021-04-01"), date_final=as.Date("2021-04-30"), 
                                    beta = exp(binder4[[3]][1]), gamma = exp(binder4[[3]][2]), K = binder4[[4]])
 binder_test_period
 
-pred_bind_I <- rbind(binder1[[1]], binder2[[1]], binder3[[1]], binder4[[1]], binder_test_period[[1]])
-pred_bind_R <- rbind(binder1[[2]], binder2[[2]], binder3[[2]], binder4[[2]], binder_test_period[[2]])
+pred_bind_I <- rbind(binder1[[1]], binder2[[1]], binder3[[1]], binder4[[1]], binder5[[1]], binder_test_period[[1]])
+pred_bind_R <- rbind(binder1[[2]], binder2[[2]], binder3[[2]], binder4[[2]], binder5[[2]], binder_test_period[[2]])
 
 
-bind_I <- rbind(binder1[[1]], binder2[[1]], binder3[[1]], binder4[[1]])
-bind_R <- rbind(binder1[[2]], binder2[[2]], binder3[[2]], binder4[[2]])
+bind_I <- rbind(binder1[[1]], binder2[[1]], binder3[[1]], binder4[[1]], binder5[[1]])
+bind_R <- rbind(binder1[[2]], binder2[[2]], binder3[[2]], binder4[[2]], binder5[[2]])
 
 bind_I
 bind_R
@@ -441,7 +442,7 @@ brazil =
 
 
 brazil = brazil %>% 
-  filter(date >= as.Date("2020-11-01"), date <= as.Date("2021-05-01"))
+  filter(date >= as.Date("2020-11-01"), date <= as.Date("2021-04-30"))
 brazil$day=c(1:nrow(brazil))
 
 brazil = brazil %>% 
@@ -504,4 +505,36 @@ p = grid.arrange(p1, p2)
 grid.arrange(p1, p2)
 }
 plot_periods(pred_bind_I)
+
+#SMAPE for testing period (I)
+
+T_test = 30
+SMAPE_SEIR_test <- function(model){
+  brazil_smape = brazil %>% 
+    filter(train_test == "test")
+  pred_bind_I_smape = pred_bind_I %>% 
+    filter(train_test == "test")
+  abs_num <- abs(pred_bind_I_smape$pred_I_med - brazil_smape$I)
+  abs_denom <- (abs(brazil_smape$I) + abs(pred_bind_I_smape$pred_I_med))/2
+  summation <- sum(abs_num/abs_denom)
+  return ((100/T_test)*(summation))
+}
+
+SMAPE_SEIR_test(bind_I)
+
+T_train = 151
+SMAPE_SEIR_train <- function(model){
+  brazil_smape = brazil %>% 
+    filter(train_test == "train")
+  abs_num <- abs(bind_I$pred_I_med - brazil_smape$I)
+  abs_denom <- (abs(brazil_smape$I) + abs(bind_I$pred_I_med))/2
+  summation <- sum(abs_num/abs_denom)
+  return ((100/T_train)*(summation))
+}
+
+SMAPE_SEIR_train(bind_I)
+
+
+
+
 
