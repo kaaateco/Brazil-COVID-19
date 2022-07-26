@@ -11,70 +11,6 @@ library(tidyverse)
 library(dplyr)
 
 periods_SEIR <- function(date_initial, date_final,starting_par){
-  
-
-
-# Set date ranges ----
-#date_initial = as.Date("2020-11-01")
-#date_final = as.Date("2021-1-01")
-
-
-# Import data ----
-# confirmed
-case_url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
-confirmed = read_csv(case_url)
-
-# deaths
-death_url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
-deaths = read_csv(death_url)
-
-# recoveries
-recovery_url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
-recoveries = read_csv(recovery_url)
-
-
-# Process and merge data ----
-brazil_confirmed = confirmed %>%
-  filter(`Country/Region` == "Brazil") %>% #, is.na(`Province/State`)
-  dplyr::select(-`Province/State`, -Lat, -Long, -`Country/Region`)
-brazil_confirmed = tibble(date = colnames(brazil_confirmed),
-                          cases_total = as.numeric(brazil_confirmed[1, ]))
-
-brazil_deaths = deaths %>%
-  filter(`Country/Region` == "Brazil") %>% #, is.na(`Province/State`)
-  dplyr::select(-`Province/State`, -Lat, -Long, -`Country/Region`)
-brazil_deaths = tibble(date = colnames(brazil_deaths),
-                       deaths_total = as.numeric(brazil_deaths[1, ]))
-
-brazil_recovered = recoveries %>%
-  filter(`Country/Region` == "Brazil") %>% #, is.na(`Province/State`)
-  dplyr::select(-`Province/State`, -Lat, -Long, -`Country/Region`)
-brazil_recovered = tibble(date = colnames(brazil_recovered),
-                          recoveries_total = as.numeric(brazil_recovered[1, ]))
-
-brazil = brazil_confirmed %>% left_join(brazil_recovered, by = "date")
-brazil = brazil %>% left_join(brazil_deaths, by = "date")
-
-brazil =
-  brazil %>%
-  mutate(date = as.Date(date, format = "%m/%d/%y"))
-
-brazil =
-  brazil %>%
-  mutate(total_removed = deaths_total + recoveries_total,
-         active_cases = cases_total - total_removed,
-         day = 1:n(),
-         I = active_cases,
-         R = total_removed)
-
-brazil =
-  brazil %>%
-  filter(I < 2e7, R > -3e5)
-
-brazil =
-  brazil %>%
-  filter(date >= date_initial, date <= date_final)
-
 
 # SIR solver ----
 seir_1 = function(beta, gamma, I0, R0, E0, times, N, lambda, mu,sigma, K) {
@@ -90,13 +26,13 @@ seir_1 = function(beta, gamma, I0, R0, E0, times, N, lambda, mu,sigma, K) {
   }
 
 
-  
+
   # prepare input for ODE solver
   parameters_values = c(beta = beta, gamma = gamma)
   E0 = K*I0
   S0 = N - I0 - R0- E0
   initial_values = c(S = S0,E = E0, I = I0, R = R0)
-  
+
   # solve system of ODEs
   out = ode(initial_values, times, seir_equations, parameters_values,method = "rk4")
   return(as.data.frame(out))
@@ -135,11 +71,11 @@ ss = function(beta, gamma, N, data, lambda, mu,sigma,K) {
   I0 = data$I[1]
   R0 = data$R[1]
   times = data$day
-  
+
   # transform parameters so they are non-negative
   beta = exp(beta)
   gamma = exp(gamma)
-  
+
   # generate predictions using parameters, starting values
   predictions = seir_1(beta = beta, gamma = gamma,              # parameters
                        I0 = I0, R0 = R0,                         # variables' intial values
@@ -169,7 +105,7 @@ R0=data$R[1]
 
 sse<-function(K){
   ss_optim = optim(starting_param_val, ss2, N = N, data = data, lambda = lambda,
-                   mu = mu, sigma=sigma,K=K)
+                   mu = mu, sigma=sigma, K=K)
   return(ss_optim$value)
 }
 # Calculate R0 ----
@@ -253,8 +189,6 @@ return(list(pred,pars,K))
 sse((starting_param_val, ss2, N = N, data = data, lambda = lambda,
      mu = mu, sigma=sigma,K=K))
 
-
-
 starting_par=log(c(1e-2,1e-5))
 binder1 <- periods_SEIR(as.Date("2020-11-01"), as.Date("2020-12-01"),starting_par)
 binder2 <- periods_SEIR(as.Date("2020-12-01"), as.Date("2021-01-01"), c(binder1[[2]]: binder1[[3]]))
@@ -306,12 +240,12 @@ brazil =
   filter(I < 2e7, R > -3e5)
 
 
-brazil = brazil %>% 
+brazil = brazil %>%
   filter(date >= as.Date("2020-11-01"), date <= as.Date("2021-04-01"))
 
 
 
-plot_periods = function(bind)
+plot_periods = function(bind, brazil)
 {ci = c("#C79999")
 mn = c("#7C0000")
 date_breaks = "1 month"
@@ -328,28 +262,38 @@ base = ggplot() +
     axis.title = element_text(size = 12)
   ) +
   theme(legend.position = "right")
+
 p1 = base +
   geom_smooth(mapping = aes(x = date, y = pred_I, color = colour),
-              data = bind, size = 1,color=mn, span = 0.2) +
+              data = bind, size = 1,color = "mediumblue", span = 0.2) +
   geom_bar(mapping = aes(x = date, y = I), stat = "identity",
-           data = brazil, width = 0.5, fill = 'steelblue', alpha = 0.7,
-  ) #+
-#xlim(date_initial, date_final)
+           data = brazil, width = 0.5, fill = 'green4', alpha = 0.7,
+  )
+
 p1 = p1 + labs(y = "Active Cases")
 #ggsave("Cases_8months.pdf",p1,width=8, height=6)
+
 p2 = base +
   geom_smooth(mapping = aes(x = date, y = pred_R, color = colour),
-              data = bind, size = 1,color = mn, span = 0.2) +
+              data = bind, size = 1, color = "mediumblue", span = 0.2) +
   geom_bar(mapping = aes(x = date, y= R), stat="identity",
-           data = brazil, width = 0.5, fill = 'steelblue', alpha = 0.7) #+
-#xlim(binder1, binder6)
+           data = brazil, width = 0.5, fill = 'green4', alpha = 0.7) #+
+
 p2 = p2 + labs(y = "Removed")
-#("Removed_8months.pdf",p2,width=8, height=6)
-p = grid.arrange(p1, p2)
-#
-grid.arrange(p1, p2)
+
+#p = grid.arrange(p1, p2)
+#grid.arrange(p1, p2)
+
+ecase_plot <- ggplotly(p1)
+edeath_plot <- ggplotly(p2)
+
+subplot(ecase_plot, edeath_plot, titleX = T, titleY = T, margin = .08,
+        nrows = 2, shareX = F) %>%
+  plotly::config(toImageButtonOptions = list(width = NULL))
+
 }
-plot_periods(bind)
+
+plot_periods(bind, brazil)
 
 
 #Need to add beta and gamma parameters
